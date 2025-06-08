@@ -2,27 +2,25 @@
 Run the software mention recognizer service on PDF or XML fulltext file collections
 '''
 
-import gzip
-import sys
-import os
-import shutil
-import json
-import pickle
-import lmdb
 import argparse
-import time
-import datetime
-import software_mentions_client.S3
-import concurrent.futures
-import requests
-import pymongo
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+import gzip
 import hashlib
-import copyreg
-import types
+import json
 import logging
 import logging.handlers
+import os
+import pickle
 import pkgutil
+import shutil
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+import lmdb
+import pymongo
+import requests
+
+import software_mentions_client.S3
 
 map_size = 100 * 1024 * 1024 * 1024
 
@@ -40,12 +38,17 @@ endpoint_datastet_txt = 'service/annotateDatasetSentence'
 logging.basicConfig(filename='client.log', filemode='w', level=logging.DEBUG)
 
 
-class software_mentions_client(object):
+class SoftwareMentionsClient(object):
     """
     Python client for using the Softcite software mention service. 
     """
 
-    def __init__(self, config_path='./config.json', use_datastet=False):
+    def __init__(
+            self,
+            config_path='./config.json',
+            use_datastet=False,
+            data_path=None
+    ):
         self.config = None
 
         # standard lmdb environment for keeping track of the status of processing
@@ -140,14 +143,15 @@ class software_mentions_client(object):
                           'test call to service, please check and re-start a server.')
         return False
 
-    def _init_lmdb(self, use_datastet=False):
+    def _init_lmdb(self, use_datastet=False, data_path=None):
         # open in write mode
+        root_data_path = self.config["data_path"] if not data_path else data_path
         if use_datastet:
-            envFilePath = os.path.join(self.config["data_path"], 'entries_dataset')
-            self.env_dataset = lmdb.open(envFilePath, map_size=map_size)
+            env_file_path = os.path.join(root_data_path, 'entries_dataset')
+            self.env_dataset = lmdb.open(env_file_path, map_size=map_size)
         else:
-            envFilePath = os.path.join(self.config["data_path"], 'entries_software')
-            self.env_software = lmdb.open(envFilePath, map_size=map_size)
+            env_file_path = os.path.join(root_data_path, 'entries_software')
+            self.env_software = lmdb.open(env_file_path, map_size=map_size)
 
         # envFilePath = os.path.join(self.config["data_path"], 'fail_software')
         # self.env_fail_software = lmdb.open(envFilePath, map_size=map_size)
@@ -1217,7 +1221,10 @@ if __name__ == "__main__":
                         help="a single PDF or XML input file to be processed by the Softcite software mention recognizer")
     parser.add_argument("--file-out", default=None,
                         help="path to a single output the software mentions in JSON format, extracted from the PDF file-in")
-    # parser.add_argument("--data-path", default=None, help="path to the resource files created/harvested by biblio-glutton-harvester")
+    parser.add_argument(
+        "--data-path",
+        default=None,
+        help="path to the directory containing the LMDB database.")
     parser.add_argument("--config", default="./config.json", help="path to the config file, default is ./config.json")
     parser.add_argument("--reprocess", action="store_true", help="reprocessed failed PDF or XML fulltexts")
     parser.add_argument("--reset", action="store_true",
@@ -1240,7 +1247,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # data_path = args.data_path
+    data_path = args.data_path
     config_path = args.config
     reprocess = args.reprocess
     reset = args.reset
@@ -1253,7 +1260,10 @@ if __name__ == "__main__":
     scorched_earth = args.scorched_earth
     use_datastet = args.datastet
 
-    client = software_mentions_client(config_path=config_path, use_datastet=use_datastet)
+    client = SoftwareMentionsClient(
+        config_path=config_path,
+        use_datastet=use_datastet,
+        data_path=data_path)
 
     if not load_mongo and not full_diagnostic_mongo and not full_diagnostic_files and not client.service_isalive(
             use_datastet=use_datastet):
