@@ -499,16 +499,18 @@ class SoftwareMentionsClient(object):
 
         logging.info("re-processed: " + str(nb_total) + " entries")
 
-    def reset(self, use_datastet=False):
+    def reset(self, use_datastet=False, data_path=None):
         """
         Remove the local lmdb keeping track of the state of advancement of the annotation and
         of the failed entries
         """
+        root_data_path = self.config["data_path"] if data_path is None else data_path
+
         if use_datastet:
             # close environments
             self.env_dataset.close()
 
-            envFilePath = os.path.join(self.config["data_path"], 'entries_dataset')
+            envFilePath = os.path.join(root_data_path, 'entries_dataset')
             shutil.rmtree(envFilePath)
 
             # re-init the environments
@@ -517,7 +519,7 @@ class SoftwareMentionsClient(object):
             # close environments
             self.env_software.close()
 
-            envFilePath = os.path.join(self.config["data_path"], 'entries_software')
+            envFilePath = os.path.join(root_data_path, 'entries_software')
             shutil.rmtree(envFilePath)
 
             # re-init the environments
