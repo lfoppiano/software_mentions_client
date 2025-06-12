@@ -58,7 +58,11 @@ class SoftwareMentionsClient(object):
         self.env_dataset = None
 
         self._load_config(config_path)
-        self._init_lmdb(use_datastet=use_datastet)
+
+        self.root_data_path = self._init_lmdb(
+            use_datastet=use_datastet,
+            data_path=data_path
+        )
 
         if 'bucket_name' in self.config and self.config['bucket_name'] is not None and len(
                 self.config['bucket_name']) > 0:
@@ -98,6 +102,7 @@ class SoftwareMentionsClient(object):
                 logs_level = logging.CRITICAL
             else:
                 logs_level = logging.NOTSET
+
         logging.basicConfig(filename=logs_filename, filemode='w', level=logs_level)
         print("logs are written in " + logs_filename)
 
@@ -143,9 +148,11 @@ class SoftwareMentionsClient(object):
                           'test call to service, please check and re-start a server.')
         return False
 
-    def _init_lmdb(self, use_datastet=False, data_path=None):
+    def _init_lmdb(self, use_datastet=False, data_path=None) -> str:
         # open in write mode
         root_data_path = self.config["data_path"] if not data_path else data_path
+
+        os.makedirs(root_data_path, exist_ok=True)
         if use_datastet:
             env_file_path = os.path.join(root_data_path, 'entries_dataset')
             self.env_dataset = lmdb.open(env_file_path, map_size=map_size)
@@ -155,6 +162,8 @@ class SoftwareMentionsClient(object):
 
         # envFilePath = os.path.join(self.config["data_path"], 'fail_software')
         # self.env_fail_software = lmdb.open(envFilePath, map_size=map_size)
+
+        return root_data_path
 
     def annotate_directory(self, directory, force=False, use_datastet=False):
         '''
@@ -510,20 +519,20 @@ class SoftwareMentionsClient(object):
             # close environments
             self.env_dataset.close()
 
-            envFilePath = os.path.join(root_data_path, 'entries_dataset')
+            envFilePath = os.path.join(self.root_data_path, 'entries_dataset')
             shutil.rmtree(envFilePath)
 
             # re-init the environments
-            self._init_lmdb(use_datastet=True)
+            self._init_lmdb(use_datastet=True, data_path=root_data_path)
         else:
             # close environments
             self.env_software.close()
 
-            envFilePath = os.path.join(root_data_path, 'entries_software')
+            envFilePath = os.path.join(self.root_data_path, 'entries_software')
             shutil.rmtree(envFilePath)
 
             # re-init the environments
-            self._init_lmdb(use_datastet=False)
+            self._init_lmdb(use_datastet=False, data_path=root_data_path)
 
     def load_mongo(self, directory):
         if "mongo_host" in self.config and len(self.config["mongo_host"].strip()) > 0:
