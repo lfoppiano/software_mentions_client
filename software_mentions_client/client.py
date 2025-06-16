@@ -508,13 +508,11 @@ class SoftwareMentionsClient(object):
 
         logging.info("re-processed: " + str(nb_total) + " entries")
 
-    def reset(self, use_datastet=False, data_path=None):
+    def reset(self, use_datastet=False):
         """
         Remove the local lmdb keeping track of the state of advancement of the annotation and
         of the failed entries
         """
-        root_data_path = self.config["data_path"] if data_path is None else data_path
-
         if use_datastet:
             # close environments
             self.env_dataset.close()
@@ -523,7 +521,7 @@ class SoftwareMentionsClient(object):
             shutil.rmtree(envFilePath)
 
             # re-init the environments
-            self._init_lmdb(use_datastet=True, data_path=root_data_path)
+            self._init_lmdb(use_datastet=True, data_path=self.root_data_path)
         else:
             # close environments
             self.env_software.close()
@@ -532,7 +530,7 @@ class SoftwareMentionsClient(object):
             shutil.rmtree(envFilePath)
 
             # re-init the environments
-            self._init_lmdb(use_datastet=False, data_path=root_data_path)
+            self._init_lmdb(use_datastet=False, data_path=self.root_data_path)
 
     def load_mongo(self, directory):
         if "mongo_host" in self.config and len(self.config["mongo_host"].strip()) > 0:
