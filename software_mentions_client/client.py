@@ -1316,7 +1316,6 @@ if __name__ == "__main__":
     full_diagnostic_files = args.diagnostic_files
     scorched_earth = args.scorched_earth
     use_datastet = args.datastet
-    tei_already_segmented = args.tei_already_segmented
 
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
