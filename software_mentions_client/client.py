@@ -35,7 +35,7 @@ endpoint_datastet_tei = 'service/processDatasetTEI'
 endpoint_datastet_txt = 'service/annotateDatasetSentence'
 
 # default logging settings
-logging.basicConfig(filename='client.log', filemode='w', level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 class SoftwareMentionsClient(object):
@@ -165,7 +165,12 @@ class SoftwareMentionsClient(object):
 
         return root_data_path
 
-    def annotate_directory(self, directory, force=False, use_datastet=False):
+    def annotate_directory(
+            self,
+            directory,
+            force=False,
+            use_datastet=False
+    ):
         '''
         recursive directory walk for processing in parallel all PDF and XML documents
         '''
@@ -250,7 +255,13 @@ class SoftwareMentionsClient(object):
                 full_records.append(record)
 
                 if len(pdf_files) == self.config["batch_size"]:
-                    self.annotate_batch(pdf_files, out_files, full_records, use_datastet=use_datastet)
+                    self.annotate_batch(
+                        pdf_files,
+                        out_files,
+                        full_records,
+                        use_datastet=use_datastet
+                    )
+
                     nb_total += len(pdf_files)
                     pdf_files = []
                     out_files = []
@@ -361,14 +372,25 @@ class SoftwareMentionsClient(object):
             sys.stdout.flush()
     """
 
-    def annotate_batch(self, pdf_files, out_files=None, full_records=None, use_datastet=False):
+    def annotate_batch(
+            self,
+            pdf_files,
+            out_files=None,
+            full_records=None,
+            use_datastet=False):
         # process a provided list of PDF
         with ThreadPoolExecutor(max_workers=self.config["concurrency"]) as executor:
             # with ProcessPoolExecutor(max_workers=self.config["concurrency"]) as executor:
             # note: ProcessPoolExecutor will not work due to env objects that can't be serailized (e.g. LMDB variables)
             # client is not cpu bounded but io bounded, so normally it's still okay with threads and GIL
-            executor.map(self.annotate, pdf_files, out_files, full_records, [use_datastet] * len(pdf_files),
-                         timeout=self.config["timeout"])
+            executor.map(
+                self.annotate,
+                pdf_files,
+                out_files,
+                full_records,
+                [use_datastet] * len(pdf_files),
+                timeout=self.config["timeout"]
+            )
 
     def reprocess_failed(self, directory, use_datastet=False):
         """
@@ -1234,7 +1256,11 @@ if __name__ == "__main__":
         "--data-path",
         default=None,
         help="path to the directory containing the LMDB database.")
-    parser.add_argument("--config", default="./config.json", help="path to the config file, default is ./config.json")
+    parser.add_argument(
+        "--config",
+        default="./config.json",
+        help="path to the config file, default is ./config.json"
+    )
     parser.add_argument("--reprocess", action="store_true", help="reprocessed failed PDF or XML fulltexts")
     parser.add_argument("--reset", action="store_true",
                         help="ignore previous processing states and re-init the annotation process from the beginning")
@@ -1250,9 +1276,14 @@ if __name__ == "__main__":
     parser.add_argument("--scorched-earth", action="store_true",
                         help="remove the PDF or XML fulltext files file after their sucessful processing in order to save storage space"
                              + ", careful with this!")
-    parser.add_argument("--datastet", action="store_true",
-                        help="call the DataStet service instead of the software mention extraction service. " +
-                             "It requires a DataStet server running instead of the Softcite server, and indicating the Datastet server url in the config file")
+    parser.add_argument(
+        "--datastet",
+        action="store_true",
+        help="call the DataStet service instead of the software mention extraction service. " +
+             "It requires a DataStet server running instead of the Softcite server, and indicating the Datastet server url in the config file"
+    )
+
+
 
     args = parser.parse_args()
 
@@ -1268,6 +1299,14 @@ if __name__ == "__main__":
     full_diagnostic_files = args.diagnostic_files
     scorched_earth = args.scorched_earth
     use_datastet = args.datastet
+    tei_already_segmented = args.tei_already_segmented
+
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        level=logging.DEBUG,
+        handlers=[logging.StreamHandler(), logging.FileHandler(log_path)],
+    )
 
     client = SoftwareMentionsClient(
         config_path=config_path,
@@ -1303,13 +1342,30 @@ if __name__ == "__main__":
         """
 
     elif reprocess:
-        client.reprocess_failed(repo_in, use_datastet=use_datastet)
+        client.reprocess_failed(
+            repo_in,
+            use_datastet=use_datastet
+        )
+
     elif repo_in is not None and not full_diagnostic_files:
-        client.annotate_directory(repo_in, force, use_datastet=use_datastet)
+        client.annotate_directory(
+            repo_in,
+            force,
+            use_datastet=use_datastet
+        )
+
     elif file_in is not None:
-        client.annotate(file_in, file_out, None, use_datastet=use_datastet)
+        client.annotate(
+            file_in,
+            file_out,
+            None,
+            use_datastet=use_datastet
+        )
     # elif data_path is not None:
     #    client.annotate_collection(data_path, force, use_datastet=use_datastet)
 
-    client.diagnostic(full_diagnostic_mongo=full_diagnostic_mongo, full_diagnostic_files=full_diagnostic_files,
-                      directory=repo_in)
+    client.diagnostic(
+        full_diagnostic_mongo=full_diagnostic_mongo,
+        full_diagnostic_files=full_diagnostic_files,
+        directory=repo_in
+    )
