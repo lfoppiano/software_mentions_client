@@ -26,7 +26,7 @@ map_size = 100 * 1024 * 1024 * 1024
 
 # default endpoint
 endpoint_pdf = 'service/annotateSoftwarePDF'
-endpoint_txt = 'service/annotateSoftwareText'
+endpoint_txt = 'service/processSoftwareText'
 endpoint_xml = 'service/annotateSoftwareXML'
 endpoint_tei = 'service/annotateSoftwareTEI'
 
@@ -296,6 +296,8 @@ class SoftwareMentionsClient(object):
             filename_json = filename.replace(".grobid.tei.xml", "." + target + ".json")
         elif filename.endswith(".xml"):
             filename_json = filename.replace(".xml", "." + target + ".json")
+        elif filename.endswith(".txt"):
+            filename_json = filename.replace(".txt", "." + target + ".json")
         else:
             filename_json = None
 
@@ -659,13 +661,28 @@ class SoftwareMentionsClient(object):
                     url += endpoint_tei
                 else:
                     url += endpoint_xml
+            elif file_in.endswith('.txt'):
+                with open(file_in, 'r', encoding='utf-8') as f:
+                    the_file = {'text': f.read()}
+                url += endpoint_txt
         except:
             logging.exception("input file appears invalid: " + file_in)
             return
 
         jsonObject = None
         try:
-            response = requests.post(url, files=the_file, data={'disambiguate': 1}, timeout=self.config["timeout"])
+            if file_in.endswith('.txt'):
+                send_data = {'disambiguate': 0}
+                send_data.update(the_file)
+                response = requests.post(url, data=send_data, timeout=self.config["timeout"])
+            else:
+                response = requests.post(
+                    url,
+                    files=the_file,
+                    data={'disambiguate': 1},
+                    timeout=self.config["timeout"]
+                )
+
             if response.status_code == 503:
                 logging.info('service overloaded, sleep ' + str(self.config['sleep_time']) + ' seconds')
                 time.sleep(self.config['sleep_time'])
@@ -1247,7 +1264,7 @@ def getSHA1(the_file):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Softcite software mention recognizer client")
     parser.add_argument("--repo-in", default=None,
-                        help="path to a directory of PDF or XML fulltext files to be processed by the Softcite software mention recognizer")
+                        help="path to a directory of PDF, TXT, or XML fulltext files to be processed by the Softcite software mention recognizer")
     parser.add_argument("--file-in", default=None,
                         help="a single PDF or XML input file to be processed by the Softcite software mention recognizer")
     parser.add_argument("--file-out", default=None,
