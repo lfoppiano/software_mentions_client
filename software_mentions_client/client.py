@@ -1321,7 +1321,7 @@ if __name__ == "__main__":
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         level=logging.DEBUG,
-        handlers=[logging.StreamHandler(), logging.FileHandler(log_path)],
+        handlers=[logging.StreamHandler()],
     )
 
     client = SoftwareMentionsClient(
