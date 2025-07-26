@@ -47,7 +47,8 @@ class SoftwareMentionsClient(object):
             self,
             config_path='./config.json',
             use_datastet=False,
-            data_path=None
+            data_path=None,
+            concurrency=None
     ):
         self.config = None
 
@@ -58,6 +59,10 @@ class SoftwareMentionsClient(object):
         self.env_dataset = None
 
         self._load_config(config_path)
+
+        if concurrency is not None:
+            logger.info(f"Override concurrency {self.config['concurrency']} with command-line specified value: {concurrency}")
+            self.config['concurrency'] = concurrency
 
         self.root_data_path = self._init_lmdb(
             use_datastet=use_datastet,
@@ -1299,6 +1304,12 @@ if __name__ == "__main__":
         help="call the DataStet service instead of the software mention extraction service. " +
              "It requires a DataStet server running instead of the Softcite server, and indicating the Datastet server url in the config file"
     )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=None,
+        help="Override configuration on number of concurrent requests to the annotation service, default is None (defined in config.json)"
+    )
 
 
 
@@ -1316,6 +1327,7 @@ if __name__ == "__main__":
     full_diagnostic_files = args.diagnostic_files
     scorched_earth = args.scorched_earth
     use_datastet = args.datastet
+    concurrency = args.concurrency
 
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
@@ -1327,7 +1339,9 @@ if __name__ == "__main__":
     client = SoftwareMentionsClient(
         config_path=config_path,
         use_datastet=use_datastet,
-        data_path=data_path)
+        data_path=data_path,
+        concurrency=concurrency,
+    )
 
     if not load_mongo and not full_diagnostic_mongo and not full_diagnostic_files and not client.service_isalive(
             use_datastet=use_datastet):
